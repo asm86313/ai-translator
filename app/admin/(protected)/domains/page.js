@@ -2,9 +2,13 @@
 
 import { useState, useEffect } from 'react'
 
+const ENGINE_LABELS = { claude: 'Claude', gemini: 'Gemini' }
+const ENGINE_COLORS = { claude: '#a78bfa', gemini: '#34d399' }
+
 export default function DomainsPage() {
     const [domains, setDomains] = useState([])
     const [newDomain, setNewDomain] = useState('')
+    const [newEngine, setNewEngine] = useState('claude')
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
 
@@ -23,13 +27,14 @@ export default function DomainsPage() {
         const res = await fetch('/api/admin/domains', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ domain: newDomain.trim() }),
+            body: JSON.stringify({ domain: newDomain.trim(), engine: newEngine }),
         })
         if (!res.ok) {
             const data = await res.json()
             alert(data.error || '추가 실패')
         }
         setNewDomain('')
+        setNewEngine('claude')
         setSubmitting(false)
         fetchDomains()
     }
@@ -39,6 +44,15 @@ export default function DomainsPage() {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, active: !active }),
+        })
+        fetchDomains()
+    }
+
+    async function changeEngine(id, engine) {
+        await fetch('/api/admin/domains', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, engine }),
         })
         fetchDomains()
     }
@@ -55,7 +69,7 @@ export default function DomainsPage() {
 
             <div style={card}>
                 <h2 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: '#e2e8f0' }}>새 도메인 추가</h2>
-                <p style={{ margin: '0 0 14px', fontSize: 13, color: '#64748b' }}>위젯 사용을 허용할 도메인을 입력하세요 (예: hwaseong.go.kr)</p>
+                <p style={{ margin: '0 0 14px', fontSize: 13, color: '#64748b' }}>위젯 사용을 허용할 도메인과 번역 엔진을 설정하세요</p>
                 <form onSubmit={addDomain} style={{ display: 'flex', gap: 8 }}>
                     <input
                         value={newDomain}
@@ -63,6 +77,14 @@ export default function DomainsPage() {
                         placeholder="example.com"
                         style={inputStyle}
                     />
+                    <select
+                        value={newEngine}
+                        onChange={e => setNewEngine(e.target.value)}
+                        style={{ ...inputStyle, flex: 'none', width: 120 }}
+                    >
+                        <option value="claude">Claude</option>
+                        <option value="gemini">Gemini</option>
+                    </select>
                     <button type="submit" disabled={submitting} style={btnPrimary}>
                         {submitting ? '추가 중...' : '추가'}
                     </button>
@@ -76,17 +98,31 @@ export default function DomainsPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '2px solid #2d3748' }}>
-                                {['도메인', '상태', '등록일', '관리'].map((h, i) => (
-                                    <th key={h} style={{ padding: '10px 14px', textAlign: i === 3 ? 'right' : 'left', fontSize: 13, fontWeight: 600, color: '#64748b' }}>{h}</th>
+                                {['도메인', '엔진', '상태', '등록일', '관리'].map((h, i) => (
+                                    <th key={h} style={{ padding: '10px 14px', textAlign: i === 4 ? 'right' : 'left', fontSize: 13, fontWeight: 600, color: '#64748b' }}>{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {domains.length === 0 ? (
-                                <tr><td colSpan={4} style={{ padding: 32, textAlign: 'center', color: '#475569', fontSize: 14 }}>등록된 도메인이 없습니다</td></tr>
+                                <tr><td colSpan={5} style={{ padding: 32, textAlign: 'center', color: '#475569', fontSize: 14 }}>등록된 도메인이 없습니다</td></tr>
                             ) : domains.map(d => (
                                 <tr key={d.id} style={{ borderBottom: '1px solid #1e2433' }}>
                                     <td style={td}><strong style={{ color: '#e2e8f0' }}>{d.domain}</strong></td>
+                                    <td style={td}>
+                                        <select
+                                            value={d.engine || 'claude'}
+                                            onChange={e => changeEngine(d.id, e.target.value)}
+                                            style={{
+                                                padding: '3px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                                background: '#0f1117', border: `1px solid ${ENGINE_COLORS[d.engine || 'claude']}`,
+                                                color: ENGINE_COLORS[d.engine || 'claude'], cursor: 'pointer', outline: 'none'
+                                            }}
+                                        >
+                                            <option value="claude">Claude</option>
+                                            <option value="gemini">Gemini</option>
+                                        </select>
+                                    </td>
                                     <td style={td}>
                                         <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: d.active ? '#0d2e1a' : '#2d1515', color: d.active ? '#34d399' : '#f87171' }}>
                                             {d.active ? '활성' : '비활성'}

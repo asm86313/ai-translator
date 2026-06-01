@@ -1,10 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { Redis } from '@upstash/redis'
 import { createServiceClient } from '@/lib/supabase/service'
 import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 let redis = null
 try {
@@ -33,14 +35,52 @@ function extractDomain(request) {
     try { return new URL(src).hostname } catch { return null }
 }
 
-async function isDomainAllowed(domain) {
-    if (!domain) return false
-    if (['localhost', '127.0.0.1'].includes(domain) || /^192\.168\./.test(domain)) return true
+async function getDomainConfig(domain) {
+    if (!domain) return null
+    if (['localhost', '127.0.0.1'].includes(domain) || /^192\.168\./.test(domain)) {
+        return { allowed: true, engine: 'claude' }
+    }
     try {
         const db = createServiceClient()
-        const { data } = await db.from('allowed_domains').select('id').eq('domain', domain).eq('active', true).single()
-        return !!data
-    } catch { return false }
+        const { data } = await db.from('allowed_domains')
+            .select('id, engine')
+            .eq('domain', domain)
+            .eq('active', true)
+            .single()
+        if (!data) return null
+        return { allowed: true, engine: data.engine || 'claude' }
+    } catch { return null }
+}
+
+async function translateWithClaude(prompt) {
+    const response = await anthropic.messages.create({
+        model: 'claude-opus-4-8',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
+        output_config: {
+            format: {
+                type: 'json_schema',
+                schema: {
+                    type: 'object',
+                    properties: { results: { type: 'array', items: { type: 'string' } } },
+                    required: ['results'],
+                    additionalProperties: false,
+                },
+            },
+        },
+    })
+    const textBlock = response.content.find(b => b.type === 'text')
+    return JSON.parse(textBlock.text).results
+}
+
+async function translateWithGemini(prompt) {
+    const model = genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        generationConfig: { responseMimeType: 'application/json' },
+    })
+    const result = await model.generateContent(prompt)
+    const parsed = JSON.parse(result.response.text())
+    return parsed.results || parsed.translations || Object.values(parsed)
 }
 
 async function getCache(hash) {
@@ -77,7 +117,9 @@ export async function OPTIONS() {
 export async function POST(request) {
     try {
         const domain = extractDomain(request)
-        if (!await isDomainAllowed(domain)) {
+        const config = await getDomainConfig(domain)
+
+        if (!config) {
             return NextResponse.json({ error: 'Domain not allowed' }, { status: 403, headers: CORS })
         }
 
@@ -105,7 +147,7 @@ export async function POST(request) {
             }
         }))
 
-        // 2. Claude 번역
+        // 2. 번역 엔진 호출
         if (toTranslate.length > 0) {
             const targetName = LANG_NAMES[target_lang] || target_lang
             const sourceName = LANG_NAMES[source_lang] || source_lang
@@ -121,26 +163,9 @@ Rules:
 Texts:
 ${textList}`
 
-            const response = await anthropic.messages.create({
-                model: 'claude-opus-4-8',
-                max_tokens: 4096,
-                messages: [{ role: 'user', content: prompt }],
-                output_config: {
-                    format: {
-                        type: 'json_schema',
-                        schema: {
-                            type: 'object',
-                            properties: { results: { type: 'array', items: { type: 'string' } } },
-                            required: ['results'],
-                            additionalProperties: false,
-                        },
-                    },
-                },
-            })
-
-            const textBlock = response.content.find(b => b.type === 'text')
-            const parsed = JSON.parse(textBlock.text)
-            const translations = parsed.results || parsed.translations || Object.values(parsed)
+            const translations = config.engine === 'gemini'
+                ? await translateWithGemini(prompt)
+                : await translateWithClaude(prompt)
 
             await Promise.all(toTranslate.map(async (item, i) => {
                 const translatedText = translations[i] ?? item.text
@@ -148,7 +173,6 @@ ${textList}`
                 await setCache(makeHash(target_lang, item.text), translatedText)
             }))
 
-            // Supabase 저장 (번역 관리 페이지에서 조회/수정 가능)
             await saveToSupabase(toTranslate, target_lang, source_lang, translations, domain)
         }
 
