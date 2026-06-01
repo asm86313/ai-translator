@@ -1,95 +1,35 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import Script from 'next/script'
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>app/page.js</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    return (
+        <main style={{ maxWidth: 800, margin: '60px auto', padding: '0 20px', fontFamily: 'sans-serif' }}>
+            <div id="ait-target" style={{ position: 'fixed', top: 12, right: 16, zIndex: 9999 }} />
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+            <h1>AI 번역 위젯 데모</h1>
+            <p>이 페이지는 번역 위젯 테스트용입니다. 우측 상단의 언어 선택기로 언어를 변경해보세요.</p>
+
+            <h2>화성시 포토갤러리</h2>
+            <p>화성시의 아름다운 사진들을 감상하세요. 다양한 행사와 현장 사진을 제공합니다.</p>
+
+            <h3>주요 카테고리</h3>
+            <ul>
+                <li>포토뉴스</li>
+                <li>생생현장</li>
+                <li>기획특집</li>
+                <li>영상뉴스</li>
+            </ul>
+
+            <p>문의전화: 031-5189-7199</p>
+            <input type="text" placeholder="검색어를 입력하세요." style={{ padding: '8px', width: '100%', marginTop: 10 }} />
+
+            <Script id="ait-config" strategy="afterInteractive">{`
+                window.aitConfig = {
+                    apiUrl: '/api/translate',
+                    sourceLang: 'ko',
+                    targetElementId: 'ait-target',
+                }
+            `}</Script>
+            <Script src="/widget/ai-translator.js" strategy="afterInteractive" />
+        </main>
+    )
 }
