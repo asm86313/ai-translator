@@ -2,6 +2,7 @@
     window.AIT = window.AIT || {}
 
     const STORAGE_KEY = 'ait_lang'
+    const ENGINE_KEY = 'ait_engine'
 
     const LANGUAGES = [
         { code: 'ko', name: '한국어' },
@@ -12,8 +13,17 @@
         { code: 'th', name: 'ภาษาไทย' },
     ]
 
+    const ENGINES = [
+        { id: 'claude', name: 'Claude' },
+        { id: 'gemini', name: 'Gemini' },
+    ]
+
     function getCurrentLang() {
         return localStorage.getItem(STORAGE_KEY) || 'ko'
+    }
+
+    function getCurrentEngine() {
+        return localStorage.getItem(ENGINE_KEY) || 'claude'
     }
 
     function setLang(lang) {
@@ -23,6 +33,15 @@
             localStorage.setItem(STORAGE_KEY, lang)
         }
         window.location.reload()
+    }
+
+    function setEngine(engine) {
+        localStorage.setItem(ENGINE_KEY, engine)
+        window.location.reload()
+    }
+
+    function setEngineNoReload(engine) {
+        localStorage.setItem(ENGINE_KEY, engine)
     }
 
     function injectStyles() {
@@ -39,8 +58,9 @@
             .ait-select {
                 appearance: none;
                 -webkit-appearance: none;
-                background: transparent;
-                border: 1px solid currentColor;
+                background-color: #ffffff;
+                color: #333333;
+                border: 1px solid #cccccc;
                 border-radius: 6px;
                 padding: 5px 28px 5px 10px;
                 font-size: 0.85rem;
@@ -54,6 +74,13 @@
             .ait-select:focus {
                 border-color: #3b82f6;
             }
+            .ait-select option {
+                background-color: #ffffff;
+                color: #333333;
+            }
+            .ait-engine-select {
+                min-width: 90px;
+            }
         `
         document.head.appendChild(style)
     }
@@ -62,26 +89,45 @@
         injectStyles()
 
         const currentLang = getCurrentLang()
+        const currentEngine = getCurrentEngine()
         const cfg = window.AIT.config
         const langs = cfg.languages || LANGUAGES
 
         const panel = document.createElement('div')
         panel.className = 'ait-panel'
 
-        const select = document.createElement('select')
-        select.className = 'ait-select'
+        // 엔진 선택기 (showEngineSelector: true 일 때만 표시)
+        if (cfg.showEngineSelector) {
+            const engines = cfg.engines || ENGINES
+            const engineSelect = document.createElement('select')
+            engineSelect.className = 'ait-select ait-engine-select'
+
+            engines.forEach(engine => {
+                const option = document.createElement('option')
+                option.value = engine.id
+                option.textContent = engine.name
+                if (engine.id === currentEngine) option.selected = true
+                engineSelect.appendChild(option)
+            })
+
+            engineSelect.addEventListener('change', (e) => setEngine(e.target.value))
+            panel.appendChild(engineSelect)
+        }
+
+        // 언어 선택기
+        const langSelect = document.createElement('select')
+        langSelect.className = 'ait-select'
 
         langs.forEach(lang => {
             const option = document.createElement('option')
             option.value = lang.code
             option.textContent = lang.name
             if (lang.code === currentLang) option.selected = true
-            select.appendChild(option)
+            langSelect.appendChild(option)
         })
 
-        select.addEventListener('change', (e) => setLang(e.target.value))
-
-        panel.appendChild(select)
+        langSelect.addEventListener('change', (e) => setLang(e.target.value))
+        panel.appendChild(langSelect)
 
         if (targetId) {
             const target = document.getElementById(targetId)
@@ -100,5 +146,5 @@
         document.body.appendChild(panel)
     }
 
-    window.AIT.panel = { createPanel, getCurrentLang, setLang }
+    window.AIT.panel = { createPanel, getCurrentLang, getCurrentEngine, setLang, setEngine, setEngineNoReload }
 })()

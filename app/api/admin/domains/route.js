@@ -17,21 +17,21 @@ export async function GET() {
 
 export async function POST(request) {
     if (!await verifyAuth()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const { domain, engine = 'claude' } = await request.json()
+    const { domain, allowed_engines = ['claude'] } = await request.json()
     if (!domain) return NextResponse.json({ error: 'Domain required' }, { status: 400 })
     const db = createServiceClient()
-    const { error } = await db.from('allowed_domains').insert({ domain: domain.toLowerCase().trim(), engine })
+    const { error } = await db.from('allowed_domains').insert({ domain: domain.toLowerCase().trim(), allowed_engines })
     if (error) return NextResponse.json({ error: '이미 등록된 도메인이거나 오류가 발생했습니다.' }, { status: 400 })
     return NextResponse.json({ ok: true })
 }
 
 export async function PATCH(request) {
     if (!await verifyAuth()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const { id, active, engine } = await request.json()
+    const { id, active, allowed_engines } = await request.json()
     const db = createServiceClient()
     const updates = {}
     if (active !== undefined) updates.active = active
-    if (engine !== undefined) updates.engine = engine
+    if (allowed_engines !== undefined) updates.allowed_engines = allowed_engines
     await db.from('allowed_domains').update(updates).eq('id', id)
     return NextResponse.json({ ok: true })
 }

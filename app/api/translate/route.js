@@ -37,19 +37,19 @@ function extractDomain(request) {
 
 async function getDomainConfig(domain) {
     if (!domain) return null
-    if (['localhost', '127.0.0.1'].includes(domain) || /^192\.168\./.test(domain)) {
-        return { allowed: true, engine: 'claude' }
-    }
+    const isLocal = ['localhost', '127.0.0.1'].includes(domain) || /^192\.168\./.test(domain)
     try {
         const db = createServiceClient()
         const { data } = await db.from('allowed_domains')
-            .select('id, engine')
+            .select('id, allowed_engines')
             .eq('domain', domain)
             .eq('active', true)
             .single()
-        if (!data) return null
-        return { allowed: true, engine: data.engine || 'claude' }
-    } catch { return null }
+        if (data) return { allowed: true, allowedEngines: data.allowed_engines || ['claude'] }
+    } catch {}
+    // DB에 없는 localhost는 허용
+    if (isLocal) return { allowed: true, allowedEngines: ['claude', 'gemini'] }
+    return null
 }
 
 async function translateWithClaude(prompt) {
@@ -75,7 +75,7 @@ async function translateWithClaude(prompt) {
 
 async function translateWithGemini(prompt) {
     const model = genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-1.5-flash',
         generationConfig: { responseMimeType: 'application/json' },
     })
     const result = await model.generateContent(prompt)
@@ -123,7 +123,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Domain not allowed' }, { status: 403, headers: CORS })
         }
 
-        const { texts, target_lang, source_lang = 'ko' } = await request.json()
+        const { texts, target_lang, source_lang = 'ko', engine: requestEngine } = await request.json()
 
         if (!texts?.length || !target_lang) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400, headers: CORS })
@@ -147,7 +147,12 @@ export async function POST(request) {
             }
         }))
 
-        // 2. 번역 엔진 호출
+        // 2. 번역 엔진 결정 (사용자 선택 → 도메인 허용 목록 첫 번째)
+        const allowedEngines = config.allowedEngines || ['claude']
+        const engine = (requestEngine && allowedEngines.includes(requestEngine))
+            ? requestEngine
+            : allowedEngines[0]
+
         if (toTranslate.length > 0) {
             const targetName = LANG_NAMES[target_lang] || target_lang
             const sourceName = LANG_NAMES[source_lang] || source_lang
@@ -163,9 +168,20 @@ Rules:
 Texts:
 ${textList}`
 
-            const translations = config.engine === 'gemini'
-                ? await translateWithGemini(prompt)
-                : await translateWithClaude(prompt)
+            let translations
+            try {
+                translations = engine === 'gemini'
+                    ? await translateWithGemini(prompt)
+                    : await translateWithClaude(prompt)
+            } catch (engineError) {
+                // Gemini 할당량 초과 시 Claude로 자동 폴백
+                if (engine === 'gemini' && engineError?.status === 429) {
+                    console.warn('[Translate] Gemini quota exceeded, falling back to Claude')
+                    translations = await translateWithClaude(prompt)
+                } else {
+                    throw engineError
+                }
+            }
 
             await Promise.all(toTranslate.map(async (item, i) => {
                 const translatedText = translations[i] ?? item.text
@@ -176,7 +192,7 @@ ${textList}`
             await saveToSupabase(toTranslate, target_lang, source_lang, translations, domain)
         }
 
-        return NextResponse.json({ translated_texts: results.filter(Boolean) }, { headers: CORS })
+        return NextResponse.json({ translated_texts: results.filter(Boolean), allowed_engines: allowedEngines }, { headers: CORS })
     } catch (error) {
         console.error('[Translate API]', error)
         return NextResponse.json({ error: 'Translation failed' }, { status: 500, headers: CORS })

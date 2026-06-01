@@ -8,6 +8,8 @@
         targetLang: 'ko',
         targetElementId: userConfig.targetElementId || '',
         languages: userConfig.languages || null,
+        showEngineSelector: userConfig.showEngineSelector || false,
+        engines: userConfig.engines || null,
     }
 
     const BASE = userConfig.widgetBase || '/widget/modules'

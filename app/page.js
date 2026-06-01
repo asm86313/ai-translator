@@ -27,6 +27,7 @@ export default function Home() {
                     apiUrl: '/api/translate',
                     sourceLang: 'ko',
                     targetElementId: 'ait-target',
+                    showEngineSelector: true,
                 }
             `}</Script>
             <Script src="/widget/ai-translator.js" strategy="afterInteractive" />

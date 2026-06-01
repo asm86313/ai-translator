@@ -81,6 +81,7 @@
                 texts: toRequest.map(r => ({ index: r.index, text: r.text })),
                 target_lang: targetLang,
                 source_lang: sourceLang,
+                engine: cfg.engine || null,
             }),
         })
 
@@ -141,6 +142,7 @@
                 texts: toRequest.map(r => ({ index: r.index, text: r.text })),
                 target_lang: cfg.targetLang,
                 source_lang: cfg.sourceLang,
+                engine: cfg.engine || null,
             }),
         })
 
