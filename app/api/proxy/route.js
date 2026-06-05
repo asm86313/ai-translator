@@ -33,9 +33,10 @@ export async function GET(request) {
     }
 
     try {
-        // 1. Redis에서 원본 HTML 조회
+        // 1. Redis에서 원본 HTML 조회 (?nocache=1 로 강제 재fetch 가능)
+        const noCache = searchParams.get('nocache') === '1'
         const cacheKey = `proxy:${crypto.createHash('md5').update(targetUrl).digest('hex')}`
-        let rawHtml = await getCachedHtml(cacheKey)
+        let rawHtml = noCache ? null : await getCachedHtml(cacheKey)
 
         if (rawHtml) {
             console.log(`[Proxy] HTML 캐시 히트: ${targetUrl}`)
@@ -65,12 +66,27 @@ export async function GET(request) {
             }
 
             rawHtml = await res.text()
+
+            // 루트 절대 경로(/css/, /js/, /img/ 등)를 원본 도메인 URL로 치환
+            // <base href>는 상대경로만 처리하므로 루트 경로는 직접 치환 필요
+            const fetchedUrlObj = new URL(res.url || targetUrl)
+            const siteDomain = `${fetchedUrlObj.protocol}//${fetchedUrlObj.host}`
+            rawHtml = rawHtml
+                .replace(/(href|src|action)="\/(?!\/)/g, `$1="${siteDomain}/`)
+                .replace(/(href|src|action)='\/(?!\/)/g, `$1='${siteDomain}/`)
+                .replace(/url\(\/(?!\/)/g, `url(${siteDomain}/`)
+                .replace(/url\('\/(?!\/)/g, `url('${siteDomain}/`)
+                .replace(/url\("\/(?!\/)/g, `url("${siteDomain}/`)
+
             await setCachedHtml(cacheKey, rawHtml)
         }
 
         // 3. 위젯 주입 (lang/engine은 매번 동적으로)
+        // base href는 페이지 경로 기준으로 설정 (상대 경로 리소스 정상 로드)
         const urlObj = new URL(targetUrl)
-        const baseHref = `${urlObj.protocol}//${urlObj.host}`
+        const pathname = urlObj.pathname
+        const basePath = pathname.endsWith('/') ? pathname : pathname.substring(0, pathname.lastIndexOf('/') + 1)
+        const baseHref = `${urlObj.protocol}//${urlObj.host}${basePath}`
 
         const injection = `
 <base href="${baseHref}">

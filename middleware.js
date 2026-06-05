@@ -22,17 +22,21 @@ export async function middleware(request) {
     )
 
     const { data: { user } } = await supabase.auth.getUser()
-    const isLoginPath = request.nextUrl.pathname === '/admin/login'
+    const pathname = request.nextUrl.pathname
+    const isLoginPath = pathname === '/admin/login'
 
     if (!user && !isLoginPath) {
         const url = request.nextUrl.clone()
         url.pathname = '/admin/login'
+        url.searchParams.set('redirectTo', pathname)
         return NextResponse.redirect(url)
     }
 
     if (user && isLoginPath) {
+        const redirectTo = request.nextUrl.searchParams.get('redirectTo') || '/admin'
         const url = request.nextUrl.clone()
-        url.pathname = '/admin'
+        url.pathname = redirectTo
+        url.searchParams.delete('redirectTo')
         return NextResponse.redirect(url)
     }
 
@@ -40,5 +44,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-    matcher: ['/admin/:path*'],
+    matcher: ['/', '/admin/:path*'],
 }

@@ -2,14 +2,17 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function LoginPage() {
+function LoginForm() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const redirectTo = searchParams.get('redirectTo') || '/admin'
 
     async function handleLogin(e) {
         e.preventDefault()
@@ -21,7 +24,7 @@ export default function LoginPage() {
             setError('이메일 또는 비밀번호가 올바르지 않습니다.')
             setLoading(false)
         } else {
-            router.push('/admin')
+            router.push(redirectTo)
             router.refresh()
         }
     }
@@ -30,8 +33,8 @@ export default function LoginPage() {
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f1117' }}>
             <div style={{ background: '#1a1b26', border: '1px solid #2d3748', padding: 40, borderRadius: 10, width: 380 }}>
                 <div style={{ marginBottom: 28 }}>
-                    <h1 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 700, color: '#e2e8f0' }}>관리자 로그인</h1>
-                    <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>AI Translator 관리자 전용</p>
+                    <h1 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 700, color: '#e2e8f0' }}>로그인</h1>
+                    <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>AI Translator</p>
                 </div>
                 <form onSubmit={handleLogin}>
                     <div style={{ marginBottom: 16 }}>
@@ -71,5 +74,13 @@ export default function LoginPage() {
                 </form>
             </div>
         </div>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense>
+            <LoginForm />
+        </Suspense>
     )
 }
