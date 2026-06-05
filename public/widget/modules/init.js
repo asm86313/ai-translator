@@ -38,14 +38,19 @@
         panel.createPanel(cfg.targetElementId)
 
         if (currentLang && currentLang !== cfg.sourceLang) {
-            const blocks = scanner.scanNodes(document.body)
-            if (blocks.length > 0) {
-                await translator.translateNodes(blocks)
-            }
+            panel.showSpinner()
+            try {
+                const blocks = scanner.scanNodes(document.body)
+                if (blocks.length > 0) {
+                    await translator.translateNodes(blocks)
+                }
 
-            const placeholders = scanner.scanPlaceholders(document)
-            if (placeholders.length > 0) {
-                await translator.translatePlaceholders(placeholders)
+                const placeholders = scanner.scanPlaceholders(document)
+                if (placeholders.length > 0) {
+                    await translator.translatePlaceholders(placeholders)
+                }
+            } finally {
+                panel.hideSpinner()
             }
         }
 

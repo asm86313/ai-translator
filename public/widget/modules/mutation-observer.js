@@ -24,23 +24,26 @@
 
             const scanner = window.AIT.scanner
             const translator = window.AIT.translator
+            const panel = window.AIT.panel
 
             const blocks = []
             addedNodes.forEach(node => {
                 blocks.push(...scanner.scanNodes(node))
             })
 
-            if (blocks.length > 0) {
-                await translator.translateNodes(blocks)
-            }
-
             const placeholders = []
             addedNodes.forEach(node => {
                 placeholders.push(...scanner.scanPlaceholders(node))
             })
 
-            if (placeholders.length > 0) {
-                await translator.translatePlaceholders(placeholders)
+            if (blocks.length > 0 || placeholders.length > 0) {
+                panel.showSpinner()
+                try {
+                    if (blocks.length > 0) await translator.translateNodes(blocks)
+                    if (placeholders.length > 0) await translator.translatePlaceholders(placeholders)
+                } finally {
+                    panel.hideSpinner()
+                }
             }
         }, 300)
     }

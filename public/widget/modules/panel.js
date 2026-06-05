@@ -81,6 +81,22 @@
             .ait-engine-select {
                 min-width: 90px;
             }
+            .ait-spinner {
+                width: 16px;
+                height: 16px;
+                border: 2px solid rgba(0,0,0,0.15);
+                border-top: 2px solid #3b82f6;
+                border-radius: 50%;
+                animation: ait-spin 0.7s linear infinite;
+                display: none;
+                flex-shrink: 0;
+            }
+            .ait-spinner.ait-active {
+                display: block;
+            }
+            @keyframes ait-spin {
+                to { transform: rotate(360deg); }
+            }
         `
         document.head.appendChild(style)
     }
@@ -129,6 +145,12 @@
         langSelect.addEventListener('change', (e) => setLang(e.target.value))
         panel.appendChild(langSelect)
 
+        // 스피너
+        const spinner = document.createElement('div')
+        spinner.className = 'ait-spinner'
+        spinner.id = 'ait-spinner'
+        panel.appendChild(spinner)
+
         if (targetId) {
             const target = document.getElementById(targetId)
             if (target) {
@@ -146,5 +168,15 @@
         document.body.appendChild(panel)
     }
 
-    window.AIT.panel = { createPanel, getCurrentLang, getCurrentEngine, setLang, setEngine, setEngineNoReload }
+    function showSpinner() {
+        const s = document.getElementById('ait-spinner')
+        if (s) s.classList.add('ait-active')
+    }
+
+    function hideSpinner() {
+        const s = document.getElementById('ait-spinner')
+        if (s) s.classList.remove('ait-active')
+    }
+
+    window.AIT.panel = { createPanel, getCurrentLang, getCurrentEngine, setLang, setEngine, setEngineNoReload, showSpinner, hideSpinner }
 })()
