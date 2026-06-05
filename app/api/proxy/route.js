@@ -17,7 +17,7 @@ async function getCachedHtml(key) {
 
 async function setCachedHtml(key, html) {
     if (!redis) return
-    try { await redis.set(key, html, { ex: 60 * 60 }) } catch {}
+    try { await redis.set(key, html, { ex: 60 * 60 * 24 * 7 }) } catch {}  // 7일
 }
 
 export async function GET(request) {
