@@ -198,7 +198,11 @@ ${textList}`
             await saveToSupabase(toTranslate, target_lang, source_lang, translations, domain)
         }
 
-        return NextResponse.json({ translated_texts: results.filter(Boolean), allowed_engines: allowedEngines }, { headers: CORS })
+        return NextResponse.json({
+            translated_texts: results.filter(Boolean),
+            allowed_engines: allowedEngines,
+            _debug: { redis: results.length - toTranslate.length, ai: toTranslate.length },
+        }, { headers: CORS })
     } catch (error) {
         console.error('[Translate API]', error)
         return NextResponse.json({ error: 'Translation failed' }, { status: 500, headers: CORS })

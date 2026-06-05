@@ -93,6 +93,13 @@
 
         if (!data.translated_texts) return
 
+        const { redis = 0, ai = 0 } = data._debug || {}
+        if (redis > 0 && ai === 0) {
+            console.log(`%c[AIT] ✅ Redis 캐시 (${elapsed}ms) — ${redis}건 전부 캐시`, 'color:#22c55e;font-weight:bold')
+        } else if (ai > 0) {
+            console.log(`%c[AIT] 🤖 AI 번역 (${elapsed}ms) — Redis:${redis}건 / AI:${ai}건`, 'color:#f59e0b;font-weight:bold')
+        }
+
         data.translated_texts.forEach(result => {
             const req = toRequest[result.index]
             if (!req) return
