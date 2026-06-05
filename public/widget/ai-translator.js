@@ -1,9 +1,13 @@
 (async function () {
     window.AIT = window.AIT || {}
 
-    // BASE는 초기에만 필요하므로 먼저 읽음
+    // 스크립트 자신의 URL에서 modules 경로 자동 감지
     const earlyConfig = window.aitConfig || {}
-    const BASE = earlyConfig.widgetBase || '/widget/modules'
+    const scriptSrc = document.currentScript?.src || ''
+    const autoBase = scriptSrc
+        ? scriptSrc.replace('/ai-translator.js', '/modules')
+        : '/widget/modules'
+    const BASE = earlyConfig.widgetBase || autoBase
 
     const MODULES = [
         'cache.js',
