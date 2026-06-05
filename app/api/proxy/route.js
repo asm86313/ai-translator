@@ -115,7 +115,9 @@ window.aitConfig = {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
         })
     } catch (error) {
-        return new NextResponse(errorPage(`오류: ${error.message}`), {
+        const detail = error?.cause?.code || error?.code || error?.message || String(error)
+        console.error('[Proxy] fetch error:', detail, targetUrl)
+        return new NextResponse(errorPage(`오류: ${error.message} (${detail})`), {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
         })
     }
