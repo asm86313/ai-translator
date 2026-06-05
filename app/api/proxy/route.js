@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 export async function GET(request) {
     const { searchParams, origin } = new URL(request.url)
     const targetUrl = searchParams.get('url')
+    const lang = searchParams.get('lang') || 'ko'
+    const engine = searchParams.get('engine') || 'claude'
 
     if (!targetUrl) {
         return new NextResponse('<p>URL이 필요합니다.</p>', {
@@ -36,11 +38,18 @@ export async function GET(request) {
 <base href="${baseHref}">
 <div id="ait-target" style="position:fixed;top:12px;right:16px;z-index:99999;font-family:sans-serif;"></div>
 <script>
+// 툴바에서 선택한 언어/엔진을 localStorage에 주입
+if ('${lang}' !== 'ko') {
+    localStorage.setItem('ait_lang', '${lang}')
+} else {
+    localStorage.removeItem('ait_lang')
+}
+localStorage.setItem('ait_engine', '${engine}')
 window.aitConfig = {
     apiUrl: '${origin}/api/translate',
     sourceLang: 'ko',
     targetElementId: 'ait-target',
-    showEngineSelector: true,
+    showEngineSelector: false,
 }
 </script>
 <script src="${origin}/widget/ai-translator.js"></script>
