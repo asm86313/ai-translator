@@ -1,18 +1,9 @@
 (async function () {
-    const userConfig = window.aitConfig || {}
-
     window.AIT = window.AIT || {}
-    window.AIT.config = {
-        apiUrl: userConfig.apiUrl || '/api/translate',
-        sourceLang: userConfig.sourceLang || 'ko',
-        targetLang: 'ko',
-        targetElementId: userConfig.targetElementId || '',
-        languages: userConfig.languages || null,
-        showEngineSelector: userConfig.showEngineSelector || false,
-        engines: userConfig.engines || null,
-    }
 
-    const BASE = userConfig.widgetBase || '/widget/modules'
+    // BASE는 초기에만 필요하므로 먼저 읽음
+    const earlyConfig = window.aitConfig || {}
+    const BASE = earlyConfig.widgetBase || '/widget/modules'
 
     const MODULES = [
         'cache.js',
@@ -38,6 +29,19 @@
         for (const mod of MODULES) {
             await loadScript(`${BASE}/${mod}`)
         }
+
+        // 모듈 로드 완료 후 config 읽기 (inline 스크립트가 먼저 실행됨을 보장)
+        const userConfig = window.aitConfig || {}
+        window.AIT.config = {
+            apiUrl: userConfig.apiUrl || '/api/translate',
+            sourceLang: userConfig.sourceLang || 'ko',
+            targetLang: 'ko',
+            targetElementId: userConfig.targetElementId || '',
+            languages: userConfig.languages || null,
+            showEngineSelector: userConfig.showEngineSelector || false,
+            engines: userConfig.engines || null,
+        }
+
         await window.AIT.init()
     } catch (e) {
         console.error('[AIT] 초기화 실패:', e)
