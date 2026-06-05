@@ -35,9 +35,10 @@ function extractDomain(request) {
     try { return new URL(src).hostname } catch { return null }
 }
 
-async function getDomainConfig(domain) {
+async function getDomainConfig(domain, selfDomain) {
     if (!domain) return null
     const isLocal = ['localhost', '127.0.0.1'].includes(domain) || /^192\.168\./.test(domain)
+    const isSelf = selfDomain && domain === selfDomain   // 프록시를 통한 자체 요청
     try {
         const db = createServiceClient()
         const { data } = await db.from('allowed_domains')
@@ -47,8 +48,8 @@ async function getDomainConfig(domain) {
             .single()
         if (data) return { allowed: true, allowedEngines: data.allowed_engines || ['claude'] }
     } catch {}
-    // DB에 없는 localhost는 허용
-    if (isLocal) return { allowed: true, allowedEngines: ['claude', 'gemini'] }
+    // DB에 없는 localhost 또는 자체 프록시 요청은 허용
+    if (isLocal || isSelf) return { allowed: true, allowedEngines: ['claude', 'gemini'] }
     return null
 }
 
@@ -117,7 +118,8 @@ export async function OPTIONS() {
 export async function POST(request) {
     try {
         const domain = extractDomain(request)
-        const config = await getDomainConfig(domain)
+        const selfDomain = new URL(request.url).hostname
+        const config = await getDomainConfig(domain, selfDomain)
 
         if (!config) {
             return NextResponse.json({ error: 'Domain not allowed' }, { status: 403, headers: CORS })
@@ -141,6 +143,7 @@ export async function POST(request) {
             const hash = makeHash(target_lang, item.text)
             const cached = await getCache(hash)
             if (cached) {
+                console.log(`[AIT] Redis 캐시 히트: "${item.text.slice(0, 30)}..."`)
                 results[i] = { index: item.index, text: cached }
             } else {
                 toTranslate.push({ ...item, resultIndex: i })
@@ -168,11 +171,14 @@ Rules:
 Texts:
 ${textList}`
 
+            console.log(`[AIT] AI 번역 요청 — 엔진: ${engine}, ${toTranslate.length}건, 언어: ${source_lang}→${target_lang}`)
+            const t0 = Date.now()
             let translations
             try {
                 translations = engine === 'gemini'
                     ? await translateWithGemini(prompt)
                     : await translateWithClaude(prompt)
+                console.log(`[AIT] AI 번역 완료 — ${Date.now() - t0}ms`)
             } catch (engineError) {
                 // Gemini 할당량 초과 시 Claude로 자동 폴백
                 if (engine === 'gemini' && engineError?.status === 429) {

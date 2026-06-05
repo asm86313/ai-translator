@@ -9,10 +9,6 @@
         const tempDiv = document.createElement('div')
         tempDiv.innerHTML = finalHtml
 
-        const srcTexts = Array.from(tempDiv.querySelectorAll('*'))
-            .concat([tempDiv])
-            .filter(el => el.childNodes.length > 0)
-
         let success = false
         try {
             success = updateTextNodes(element, tempDiv)
@@ -66,6 +62,10 @@
             }
         })
 
+        if (cachedResults.length > 0) {
+            console.log(`%c[AIT] 브라우저 캐시 히트 ${cachedResults.length}건`, 'color:#22c55e;font-weight:bold')
+        }
+
         cachedResults.forEach(({ item, translated }) => {
             const finalHtml = replacer.decode(translated, item.tags, item.nums)
             applyTranslation(item.element, finalHtml)
@@ -73,6 +73,9 @@
         })
 
         if (toRequest.length === 0) return
+
+        console.log(`%c[AIT] 서버 요청 ${toRequest.length}건 (엔진: ${cfg.engine || 'claude'})`, 'color:#3b82f6;font-weight:bold')
+        const t0 = performance.now()
 
         const response = await fetch(cfg.apiUrl, {
             method: 'POST',
@@ -86,6 +89,8 @@
         })
 
         const data = await response.json()
+        const elapsed = (performance.now() - t0).toFixed(0)
+
         if (!data.translated_texts) return
 
         data.translated_texts.forEach(result => {
@@ -99,6 +104,8 @@
             applyTranslation(req.item.element, finalHtml)
             window.AIT.scanner.markDone(req.item.element)
         })
+
+        console.log(`%c[AIT] 서버 응답 완료 (${elapsed}ms)`, 'color:#3b82f6;font-weight:bold')
     }
 
     async function translateNodes(elements) {
