@@ -81,18 +81,33 @@
             .ait-engine-select {
                 min-width: 90px;
             }
-            .ait-spinner {
-                width: 16px;
-                height: 16px;
-                border: 2px solid rgba(0,0,0,0.15);
-                border-top: 2px solid #3b82f6;
-                border-radius: 50%;
-                animation: ait-spin 0.7s linear infinite;
+            .ait-overlay {
                 display: none;
-                flex-shrink: 0;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.45);
+                z-index: 99999;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+                gap: 16px;
             }
-            .ait-spinner.ait-active {
-                display: block;
+            .ait-overlay.ait-active {
+                display: flex;
+            }
+            .ait-spinner {
+                width: 52px;
+                height: 52px;
+                border: 5px solid rgba(255,255,255,0.25);
+                border-top: 5px solid #ffffff;
+                border-radius: 50%;
+                animation: ait-spin 0.75s linear infinite;
+            }
+            .ait-spinner-text {
+                color: #ffffff;
+                font-size: 15px;
+                font-weight: 500;
+                letter-spacing: 0.02em;
             }
             @keyframes ait-spin {
                 to { transform: rotate(360deg); }
@@ -145,11 +160,20 @@
         langSelect.addEventListener('change', (e) => setLang(e.target.value))
         panel.appendChild(langSelect)
 
-        // 스피너
-        const spinner = document.createElement('div')
-        spinner.className = 'ait-spinner'
-        spinner.id = 'ait-spinner'
-        panel.appendChild(spinner)
+        // 전체화면 오버레이 스피너 (패널 안이 아닌 body에 추가)
+        if (!document.getElementById('ait-overlay')) {
+            const overlay = document.createElement('div')
+            overlay.id = 'ait-overlay'
+            overlay.className = 'ait-overlay'
+            const spinner = document.createElement('div')
+            spinner.className = 'ait-spinner'
+            const text = document.createElement('div')
+            text.className = 'ait-spinner-text'
+            text.textContent = '번역 중...'
+            overlay.appendChild(spinner)
+            overlay.appendChild(text)
+            document.body.appendChild(overlay)
+        }
 
         if (targetId) {
             const target = document.getElementById(targetId)
@@ -169,13 +193,13 @@
     }
 
     function showSpinner() {
-        const s = document.getElementById('ait-spinner')
-        if (s) s.classList.add('ait-active')
+        const el = document.getElementById('ait-overlay')
+        if (el) el.classList.add('ait-active')
     }
 
     function hideSpinner() {
-        const s = document.getElementById('ait-spinner')
-        if (s) s.classList.remove('ait-active')
+        const el = document.getElementById('ait-overlay')
+        if (el) el.classList.remove('ait-active')
     }
 
     window.AIT.panel = { createPanel, getCurrentLang, getCurrentEngine, setLang, setEngine, setEngineNoReload, showSpinner, hideSpinner }
